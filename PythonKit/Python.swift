@@ -115,10 +115,13 @@ public struct PythonObject {
     }
 }
 
-// Make `print(python)` print a pretty form of the `PythonObject`.
-extension PythonObject : CustomStringConvertible {
+// Make `debugPrint(python)` print a pretty form of the `PythonObject`.
+//
+// Why? Because if a Python object has a "description", you have no way to access the property
+extension PythonObject: CustomDebugStringConvertible {
+
     /// A textual description of this `PythonObject`, produced by `Python.str`.
-    public var description: String {
+    public var pythonStr: String {
         // The `str` function is used here because it is designed to return
         // human-readable descriptions of Python objects. The Python REPL also uses
         // it for printing descriptions.
@@ -126,12 +129,17 @@ extension PythonObject : CustomStringConvertible {
         // too long for large objects.
         return String(Python.str(self))!
     }
+
+    public var debugDescription: String {
+        pythonStr
+    }
+
 }
 
 // Make `PythonObject` show up nicely in the Xcode Playground results sidebar.
 extension PythonObject : CustomPlaygroundDisplayConvertible {
     public var playgroundDescription: Any {
-        return description
+        return pythonStr
     }
 }
 
@@ -1823,7 +1831,7 @@ fileprivate extension PythonFunction {
         if let pythonObject = swiftError as? PythonObject {
             if Bool(Python.isinstance(pythonObject, Python.BaseException))! {
                 // We are an instance of an Exception class type. Set the exception class to the object's type:
-                PyErr_SetString(Python.type(pythonObject).ownedPyObject, pythonObject.description)
+                PyErr_SetString(Python.type(pythonObject).ownedPyObject, pythonObject.pythonStr)
             } else {
                 // Assume an actual class type was thrown (rather than an instance)
                 // Crashes if it was neither a subclass of BaseException nor an instance of one.
@@ -1831,7 +1839,7 @@ fileprivate extension PythonFunction {
                 // We *could* check to see whether `pythonObject` is a class here and fall back
                 // to the default case of setting a generic Exception, below, but we also want
                 // people to write valid code.
-                PyErr_SetString(pythonObject.ownedPyObject, pythonObject.description)
+                PyErr_SetString(pythonObject.ownedPyObject, pythonObject.pythonStr)
             }
         } else {
             // Make a generic Python Exception based on the Swift Error:
